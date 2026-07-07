@@ -1,0 +1,305 @@
+/* ===== Preview frame layers ===== */
+.frame-bg,
+.frame-filter,
+.frame-content {
+  position: absolute;
+  inset: 0;
+  width: 1920px;
+  height: 1080px;
+}
+
+.frame-bg {
+  z-index: 0;
+}
+
+.frame-filter {
+  z-index: 1;
+  background: rgba(11, 31, 58, 0.45);
+  pointer-events: none;
+  transition: background 0.2s;
+}
+
+.frame-content {
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.frame-no-bg .frame-bg,
+.frame-no-bg .frame-filter {
+  display: none;
+}
+
+/* ===== Shared template base ===== */
+.tpl {
+  position: absolute;
+  font-family: 'Noto Sans JP', 'BIZ UDPGothic', 'Hiragino Sans', sans-serif;
+  letter-spacing: 0.06em;
+}
+
+/* ===== Position helpers ===== */
+.tpl-pos-bottom-left,
+.tpl-pos-bl { left: 80px; bottom: 80px; }
+.tpl-pos-center-left,
+.tpl-pos-cl { left: 80px; top: 50%; transform: translateY(-50%); }
+.tpl-pos-bottom-center,
+.tpl-pos-bc { left: 50%; bottom: 80px; transform: translateX(-50%); text-align: center; }
+.tpl-pos-bottom-right,
+.tpl-pos-br { right: 80px; bottom: 80px; text-align: right; }
+
+.tpl-pos-bottom-center .tpl-simple-band,
+.tpl-pos-bc .tpl-simple-band { text-align: center; }
+
+/* ===== A. Title / 扉絵 ===== */
+.tpl-title-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 480px;
+}
+
+.tpl-title-number {
+  font-size: 120px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.15);
+  line-height: 1;
+  margin-bottom: -8px;
+  letter-spacing: 0.02em;
+}
+
+.tpl-title-line {
+  width: 120px;
+  height: 2px;
+  background: #7EC8E3;
+  margin: 16px 0 20px;
+}
+
+.tpl-title-name {
+  font-size: 64px;
+  font-weight: 600;
+  color: #FFFFFF;
+  line-height: 1.2;
+  text-shadow: 0 2px 12px rgba(11, 31, 58, 0.4);
+}
+
+.tpl-title-sub {
+  font-size: 28px;
+  font-weight: 400;
+  color: #7EC8E3;
+  margin-top: 16px;
+  line-height: 1.5;
+}
+
+/* ===== B. Simple subtitle ===== */
+.tpl-simple {
+  width: calc(100% - 160px);
+  max-width: 1680px;
+}
+
+.tpl-pos-bottom-center.tpl-simple,
+.tpl-pos-bc.tpl-simple {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  max-width: none;
+  transform: none;
+}
+
+.tpl-pos-bottom-center.tpl-simple:not(.has-band),
+.tpl-pos-bc.tpl-simple:not(.has-band) {
+  left: 50%;
+  right: auto;
+  bottom: 80px;
+  width: auto;
+  max-width: 1400px;
+  transform: translateX(-50%);
+}
+
+.tpl-simple-band {
+  background: rgba(11, 31, 58, 0.72);
+  border-top: 1px solid rgba(201, 168, 76, 0.6);
+  padding: 28px 48px;
+  width: 100%;
+}
+
+.tpl-pos-bottom-center .tpl-simple-band,
+.tpl-pos-bc .tpl-simple-band {
+  padding: 28px 64px;
+}
+
+.tpl-simple-text {
+  font-size: 36px;
+  font-weight: 500;
+  color: #FFFFFF;
+  line-height: 1.5;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+
+.tpl-simple-sub {
+  font-size: 24px;
+  font-weight: 400;
+  color: #7EC8E3;
+  margin-top: 8px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.tpl-simple:not(.has-band) .tpl-simple-text {
+  padding: 8px 0;
+}
+
+/* ===== C. Glass card ===== */
+.tpl-glass-card {
+  display: flex;
+  background: rgba(11, 31, 58, 0.62);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(126, 200, 227, 0.25);
+  border-radius: 4px;
+  box-shadow: 0 12px 40px rgba(11, 31, 58, 0.3);
+  max-width: 920px;
+  overflow: hidden;
+}
+
+.tpl-glass-accent {
+  width: 3px;
+  min-height: 100%;
+  background: #7EC8E3;
+  flex-shrink: 0;
+}
+
+.tpl-glass-body {
+  padding: 36px 44px 32px;
+  flex: 1;
+}
+
+.tpl-glass-text {
+  font-size: 34px;
+  font-weight: 500;
+  color: #FFFFFF;
+  line-height: 1.5;
+}
+
+.tpl-glass-sub {
+  font-size: 22px;
+  color: #7EC8E3;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+.tpl-glass-gold {
+  width: 80px;
+  height: 1px;
+  background: #C9A84C;
+  margin-top: 20px;
+}
+
+/* ===== Animation: idle preview (final state) ===== */
+.frame:not(.is-playing) .anim-item {
+  opacity: 1;
+  transform: none;
+}
+
+.frame:not(.is-playing) .anim-line-grow {
+  width: 120px;
+}
+
+.frame:not(.is-playing) .tpl-glass-gold.anim-line-grow {
+  width: 80px;
+}
+
+.frame:not(.is-playing) .anim-line-grow-v {
+  height: 100%;
+}
+
+/* ===== Animation: playing (initial → animated) ===== */
+.frame.is-playing .anim-item {
+  opacity: 0;
+}
+
+.frame.is-playing .anim-fade {
+  animation: animFadeIn 0.9s ease forwards;
+}
+
+.frame.is-playing .anim-slide-right {
+  transform: translateX(-48px);
+  opacity: 0;
+  animation: animSlideRight 0.9s ease forwards;
+}
+
+.frame.is-playing .anim-slide-up {
+  transform: translateY(32px);
+  opacity: 0;
+  animation: animSlideUp 0.9s ease forwards;
+}
+
+.frame.is-playing .anim-line-grow {
+  width: 0;
+  animation: animLineGrow 1s ease forwards;
+}
+
+.frame.is-playing .tpl-glass-gold.anim-line-grow {
+  width: 0;
+  animation: animLineGrowGold 1s ease forwards;
+}
+
+.frame.is-playing .anim-line-grow-v {
+  height: 0;
+  animation: animLineGrowV 0.8s ease forwards;
+}
+
+/* Stagger delays via data-anim-order */
+.frame.is-playing [data-anim-order="0"] { animation-delay: 0s; }
+.frame.is-playing [data-anim-order="1"] { animation-delay: 0.4s; }
+.frame.is-playing [data-anim-order="2"] { animation-delay: 0.9s; }
+.frame.is-playing [data-anim-order="3"] { animation-delay: 1.4s; }
+.frame.is-playing [data-anim-order="4"] { animation-delay: 1.8s; }
+
+@keyframes animFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes animSlideRight {
+  from { opacity: 0; transform: translateX(-48px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes animSlideUp {
+  from { opacity: 0; transform: translateY(32px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes animLineGrow {
+  from { width: 0; opacity: 0.5; }
+  to { width: 120px; opacity: 1; }
+}
+
+@keyframes animLineGrowGold {
+  from { width: 0; opacity: 0.5; }
+  to { width: 80px; opacity: 1; }
+}
+
+@keyframes animLineGrowV {
+  from { height: 0; opacity: 0.5; }
+  to { height: 100%; opacity: 1; }
+}
+
+/* Finished state holds final frame */
+.frame.is-finished .anim-item {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+.frame.is-finished .anim-line-grow {
+  width: 120px;
+}
+
+.frame.is-finished .tpl-glass-gold.anim-line-grow {
+  width: 80px;
+}
+
+.frame.is-finished .anim-line-grow-v {
+  height: 100%;
+}
