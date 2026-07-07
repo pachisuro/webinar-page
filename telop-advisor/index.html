@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>テロップ配置アドバイザー | 企業ウェビナー・倉庫紹介動画</title>
+  <title>倉庫紹介動画 デザイン素材生成 | YMM向け</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/templates.css">
 </head>
 <body>
   <header class="app-header">
@@ -15,11 +16,11 @@
       <div class="brand">
         <span class="brand-mark"></span>
         <div>
-          <h1>テロップ配置アドバイザー</h1>
-          <p class="subtitle">YMM 倉庫紹介動画向け — 物流DX・企業VPスタイル</p>
+          <h1>倉庫紹介動画 デザイン素材生成</h1>
+          <p class="subtitle">YMM向け — 扉絵・字幕・カード素材をPNG / 録画用アニメで出力</p>
         </div>
       </div>
-      <div class="palette-swatch" aria-label="推奨カラーパレット">
+      <div class="palette-swatch" aria-label="カラーパレット">
         <span class="swatch" data-color="navy" title="濃紺"></span>
         <span class="swatch" data-color="white" title="白"></span>
         <span class="swatch" data-color="lightBlue" title="水色"></span>
@@ -31,123 +32,92 @@
   <main class="app-main">
     <aside class="panel panel-left">
       <section class="card">
-        <h2>フレーム画像</h2>
+        <h2>背景画像</h2>
         <div class="upload-zone" id="uploadZone">
           <input type="file" id="fileInput" accept="image/*" hidden>
           <div class="upload-placeholder" id="uploadPlaceholder">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M12 16V4m0 0L8 8m4-4l4 4M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/>
             </svg>
-            <p>画像をドロップ、またはクリックして選択</p>
-            <p class="hint">1920×1080 推奨（自動リサイズ）</p>
+            <p>ドロップまたはクリック</p>
+            <p class="hint">1920×1080 推奨</p>
           </div>
-          <img id="thumbPreview" class="thumb-preview hidden" alt="アップロード画像">
+          <img id="thumbPreview" class="thumb-preview hidden" alt="背景プレビュー">
         </div>
-        <button type="button" class="btn btn-secondary" id="sampleBtn">サンプル画像を読み込む</button>
-      </section>
-
-      <section class="card">
-        <h2>字幕テキスト</h2>
-        <label class="field">
-          <span>メイン字幕</span>
-          <textarea id="mainText" rows="3" placeholder="倉庫の自動化で、物流DXを加速する">倉庫の自動化で、物流DXを加速する</textarea>
-        </label>
-        <label class="field">
-          <span>サブテキスト（任意）</span>
-          <input type="text" id="subText" placeholder="SEINO ロジスティクスソリューション">
+        <button type="button" class="btn btn-secondary" id="sampleBtn">サンプル画像</button>
+        <label class="field field-range">
+          <span>濃紺フィルター <output id="filterValue">45</output>%</span>
+          <input type="range" id="filterSlider" min="0" max="80" value="45">
         </label>
       </section>
 
       <section class="card">
-        <h2>配置・スタイル</h2>
+        <h2>テンプレート</h2>
         <label class="field">
-          <span>推奨位置</span>
-          <select id="positionSelect"></select>
-        </label>
-        <label class="field">
-          <span>デザインスタイル</span>
-          <select id="styleSelect">
-            <option value="auto">自動選択</option>
-            <option value="band">半透明帯</option>
-            <option value="glass">ガラス風カード</option>
+          <span>種類</span>
+          <select id="templateSelect">
+            <option value="title">章タイトル / 扉絵</option>
             <option value="simple">シンプル字幕</option>
+            <option value="glass">ガラス風カード</option>
           </select>
         </label>
-        <label class="toggle">
-          <input type="checkbox" id="showZones" checked>
-          <span>文字配置候補エリアを表示</span>
+        <label class="field" id="chapterPresetField">
+          <span>章プリセット</span>
+          <select id="chapterPreset"></select>
         </label>
-        <label class="toggle">
-          <input type="checkbox" id="showGrid">
-          <span>解析グリッドを表示</span>
+        <label class="field">
+          <span id="mainLabel">章名</span>
+          <input type="text" id="mainText" value="入庫">
         </label>
+        <label class="field" id="numberField">
+          <span>章番号</span>
+          <input type="text" id="chapterNumber" value="01" maxlength="2">
+        </label>
+        <label class="field">
+          <span>サブタイトル</span>
+          <input type="text" id="subText" value="荷受け・確認・庫内搬入">
+        </label>
+        <label class="field">
+          <span>配置</span>
+          <select id="positionSelect"></select>
+        </label>
+        <label class="toggle" id="bandToggleField">
+          <input type="checkbox" id="useBand" checked>
+          <span>濃紺半透明帯を表示</span>
+        </label>
+      </section>
+
+      <section class="card">
+        <h2>書き出し・再生</h2>
+        <label class="field">
+          <span>PNG形式</span>
+          <select id="exportMode">
+            <option value="with-bg">背景あり</option>
+            <option value="transparent">背景なし（透過）</option>
+          </select>
+        </label>
+        <button type="button" class="btn btn-primary" id="exportPngBtn">PNG書き出し（1920×1080）</button>
+        <button type="button" class="btn btn-accent" id="playAnimBtn">アニメーション再生（5秒）</button>
+        <button type="button" class="btn btn-ghost" id="resetAnimBtn">初期状態に戻す</button>
+        <p class="anim-status">状態: <span id="animStatus">待機中</span></p>
       </section>
     </aside>
 
     <section class="preview-section">
       <div class="preview-header">
         <h2>プレビュー <span class="badge">1920 × 1080</span></h2>
-        <div class="preview-actions">
-          <button type="button" class="btn btn-ghost" id="exportCssBtn" disabled>CSSをコピー</button>
-        </div>
       </div>
       <div class="preview-wrapper">
         <div class="preview-stage" id="previewStage">
           <div class="frame" id="frame">
-            <canvas id="bgCanvas" width="1920" height="1080"></canvas>
-            <canvas id="overlayCanvas" width="1920" height="1080"></canvas>
-            <div id="telopLayer" class="telop-layer"></div>
+            <canvas id="bgCanvas" class="frame-bg" width="1920" height="1080"></canvas>
+            <div id="filterLayer" class="frame-filter"></div>
+            <div id="contentLayer" class="frame-content"></div>
           </div>
         </div>
       </div>
-      <p class="preview-note">※ 実際の表示はブラウザ幅に合わせて縮小されます。比率は 16:9 を維持します。</p>
+      <p class="preview-note">OBS録画時は「初期状態に戻す」→「アニメーション再生」で5秒間の演出を収録できます。</p>
     </section>
-
-    <aside class="panel panel-right">
-      <section class="card" id="analysisCard">
-        <h2>画像解析</h2>
-        <div class="empty-state" id="analysisEmpty">
-          <p>画像をアップロードすると解析結果が表示されます</p>
-        </div>
-        <div class="analysis-content hidden" id="analysisContent">
-          <div class="metric-grid">
-            <div class="metric">
-              <span class="metric-label">明るさ</span>
-              <span class="metric-value" id="metricBrightness">—</span>
-              <div class="metric-bar"><div id="barBrightness"></div></div>
-            </div>
-            <div class="metric">
-              <span class="metric-label">コントラスト</span>
-              <span class="metric-value" id="metricContrast">—</span>
-              <span class="metric-tag" id="tagContrast">—</span>
-            </div>
-            <div class="metric">
-              <span class="metric-label">背景複雑さ</span>
-              <span class="metric-value" id="metricBusyness">—</span>
-            </div>
-            <div class="metric">
-              <span class="metric-label">トーン</span>
-              <span class="metric-value" id="metricTone">—</span>
-            </div>
-          </div>
-
-          <h3>主要色</h3>
-          <div class="color-chips" id="colorChips"></div>
-
-          <h3>被写体推定位置</h3>
-          <p class="subject-info" id="subjectInfo">—</p>
-
-          <h3>推奨配置ランキング</h3>
-          <ol class="position-rank" id="positionRank"></ol>
-
-          <h3>推奨デザイン</h3>
-          <div class="recommendation" id="designRecommendation">
-            <span class="rec-style" id="recStyle">—</span>
-            <p class="rec-rationale" id="recRationale"></p>
-          </div>
-        </div>
-      </section>
-    </aside>
   </main>
 
   <script type="module" src="js/app.js"></script>

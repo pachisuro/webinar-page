@@ -1,5 +1,9 @@
-import { analyzeFrame, FRAME_W, FRAME_H } from './analyzer.js';
-import { generateDesign, STYLE_LABELS } from './designer.js';
+import {
+  CHAPTER_PRESETS, POSITIONS,
+} from './constants.js';
+import { renderTemplate, getExportFilename } from './templates.js';
+import { exportToPng, exportViaOffscreen } from './export.js';
+import { AnimationPlayer } from './animation.js';
 
 const $ = (sel) => document.querySelector(sel);
 
@@ -8,44 +12,80 @@ const uploadZone = $('#uploadZone');
 const uploadPlaceholder = $('#uploadPlaceholder');
 const thumbPreview = $('#thumbPreview');
 const sampleBtn = $('#sampleBtn');
+const filterSlider = $('#filterSlider');
+const filterValue = $('#filterValue');
+const filterLayer = $('#filterLayer');
+const templateSelect = $('#templateSelect');
+const chapterPreset = $('#chapterPreset');
+const chapterPresetField = $('#chapterPresetField');
 const mainText = $('#mainText');
+const mainLabel = $('#mainLabel');
+const chapterNumber = $('#chapterNumber');
+const numberField = $('#numberField');
 const subText = $('#subText');
 const positionSelect = $('#positionSelect');
-const styleSelect = $('#styleSelect');
-const showZones = $('#showZones');
-const showGrid = $('#showGrid');
+const useBand = $('#useBand');
+const bandToggleField = $('#bandToggleField');
+const exportMode = $('#exportMode');
+const exportPngBtn = $('#exportPngBtn');
+const playAnimBtn = $('#playAnimBtn');
+const resetAnimBtn = $('#resetAnimBtn');
+const animStatus = $('#animStatus');
 const previewStage = $('#previewStage');
 const frame = $('#frame');
 const bgCanvas = $('#bgCanvas');
-const overlayCanvas = $('#overlayCanvas');
-const telopLayer = $('#telopLayer');
-const exportCssBtn = $('#exportCssBtn');
-
-const analysisEmpty = $('#analysisEmpty');
-const analysisContent = $('#analysisContent');
-const metricBrightness = $('#metricBrightness');
-const metricContrast = $('#metricContrast');
-const metricBusyness = $('#metricBusyness');
-const metricTone = $('#metricTone');
-const tagContrast = $('#tagContrast');
-const barBrightness = $('#barBrightness');
-const colorChips = $('#colorChips');
-const subjectInfo = $('#subjectInfo');
-const positionRank = $('#positionRank');
-const recStyle = $('#recStyle');
-const recRationale = $('#recRationale');
+const contentLayer = $('#contentLayer');
 
 let currentImage = null;
-let analysis = null;
-let currentDesign = null;
-
 const bgCtx = bgCanvas.getContext('2d');
-const overlayCtx = overlayCanvas.getContext('2d');
+let animPlayer = null;
 
 function init() {
+  populateChapterPresets();
+  populatePositions();
   bindEvents();
   resizePreview();
   window.addEventListener('resize', resizePreview);
+  animPlayer = new AnimationPlayer(frame, animStatus);
+  updateFilter();
+  onTemplateChange();
+  render();
+}
+
+function populateChapterPresets() {
+  chapterPreset.innerHTML = CHAPTER_PRESETS.map(
+    (p) => `<option value="${p.id}">${p.number} ${p.title}</option>`
+  ).join('');
+}
+
+function populatePositions() {
+  const type = templateSelect.value;
+  const positions = POSITIONS[type] || POSITIONS.title;
+  positionSelect.innerHTML = positions.map(
+    (p) => `<option value="${p.id}">${p.label}</option>`
+  ).join('');
+}
+
+function getState() {
+  const templateType = templateSelect.value;
+  const posMap = {
+    'bottom-left': 'bl',
+    'center-left': 'cl',
+    'bottom-center': 'bc',
+    'bottom-right': 'br',
+  };
+  return {
+    templateType,
+    mainText: mainText.value,
+    subText: subText.value,
+    chapterNumber: chapterNumber.value,
+    position: posMap[positionSelect.value] || positionSelect.value,
+    useBand: useBand.checked,
+    filterOpacity: filterSlider.value / 100,
+    bgImage: currentImage,
+    filename: getExportFilename(templateType, chapterNumber.value),
+    withBackground: exportMode.value === 'with-bg',
+  };
 }
 
 function bindEvents() {
@@ -59,9 +99,7 @@ function bindEvents() {
     e.preventDefault();
     uploadZone.classList.add('dragover');
   });
-  uploadZone.addEventListener('dragleave', () => {
-    uploadZone.classList.remove('dragover');
-  });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
   uploadZone.addEventListener('drop', (e) => {
     e.preventDefault();
     uploadZone.classList.remove('dragover');
@@ -70,14 +108,49 @@ function bindEvents() {
   });
 
   sampleBtn.addEventListener('click', loadSample);
-  mainText.addEventListener('input', refreshDesign);
-  subText.addEventListener('input', refreshDesign);
-  positionSelect.addEventListener('change', refreshDesign);
-  styleSelect.addEventListener('change', refreshDesign);
-  showZones.addEventListener('change', drawOverlay);
-  showGrid.addEventListener('change', drawOverlay);
+  filterSlider.addEventListener('input', updateFilter);
+  templateSelect.addEventListener('change', onTemplateChange);
+  chapterPreset.addEventListener('change', applyChapterPreset);
+  mainText.addEventListener('input', render);
+  subText.addEventListener('input', render);
+  chapterNumber.addEventListener('input', render);
+  positionSelect.addEventListener('change', render);
+  useBand.addEventListener('change', render);
 
-  exportCssBtn.addEventListener('click', copyCss);
+  exportPngBtn.addEventListener('click', handleExport);
+  playAnimBtn.addEventListener('click', () => animPlayer.play());
+  resetAnimBtn.addEventListener('click', () => animPlayer.reset());
+}
+
+function onTemplateChange() {
+  const type = templateSelect.value;
+  populatePositions();
+
+  const isTitle = type === 'title';
+  chapterPresetField.classList.toggle('hidden', !isTitle);
+  numberField.classList.toggle('hidden', !isTitle);
+  bandToggleField.classList.toggle('hidden', type !== 'simple');
+
+  mainLabel.textContent = isTitle ? '章名' : 'メイン字幕';
+
+  if (isTitle) applyChapterPreset();
+  else render();
+}
+
+function applyChapterPreset() {
+  const preset = CHAPTER_PRESETS.find((p) => p.id === chapterPreset.value);
+  if (!preset) return;
+  chapterNumber.value = preset.number;
+  mainText.value = preset.title;
+  subText.value = preset.subtitle;
+  render();
+}
+
+function updateFilter() {
+  const pct = filterSlider.value;
+  filterValue.textContent = pct;
+  filterLayer.style.background = `rgba(11, 31, 58, ${pct / 100})`;
+  drawBackground();
 }
 
 function resizePreview() {
@@ -90,257 +163,86 @@ function resizePreview() {
 async function loadFile(file) {
   const url = URL.createObjectURL(file);
   try {
-    await loadImageFromUrl(url, file.name);
+    await loadImageFromUrl(url);
     thumbPreview.src = url;
     thumbPreview.classList.remove('hidden');
     uploadPlaceholder.classList.add('hidden');
   } catch (err) {
-    alert('画像の読み込みに失敗しました: ' + err.message);
+    alert('画像の読み込みに失敗しました');
   }
 }
 
 async function loadSample() {
   try {
-    await loadImageFromUrl('sample/frame.png', 'frame.png');
+    await loadImageFromUrl('sample/frame.png');
     thumbPreview.src = 'sample/frame.png';
     thumbPreview.classList.remove('hidden');
     uploadPlaceholder.classList.add('hidden');
-  } catch (err) {
+  } catch {
     alert('サンプル画像の読み込みに失敗しました');
   }
 }
 
-function loadImageFromUrl(url, name) {
+function loadImageFromUrl(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = async () => {
+    img.onload = () => {
       currentImage = img;
-      await runAnalysis();
+      drawBackground();
+      render();
       resolve();
     };
-    img.onerror = () => reject(new Error(name));
+    img.onerror = reject;
     img.src = url;
   });
 }
 
-async function runAnalysis() {
-  if (!currentImage) return;
-
-  analysis = await analyzeFrame(currentImage);
-  bgCtx.drawImage(currentImage, 0, 0, FRAME_W, FRAME_H);
-
-  populatePositionSelect();
-  updateAnalysisPanel();
-  refreshDesign();
-  exportCssBtn.disabled = false;
-}
-
-function populatePositionSelect() {
-  positionSelect.innerHTML = '';
-  for (const pos of analysis.positions) {
-    const opt = document.createElement('option');
-    opt.value = pos.id;
-    opt.textContent = `${pos.label}（スコア ${pos.score}）`;
-    if (pos.id === analysis.recommended.id) opt.selected = true;
-    positionSelect.appendChild(opt);
+function drawBackground() {
+  bgCtx.fillStyle = '#1a2840';
+  bgCtx.fillRect(0, 0, FRAME_W, FRAME_H);
+  if (currentImage) {
+    bgCtx.drawImage(currentImage, 0, 0, FRAME_W, FRAME_H);
   }
 }
 
-function updateAnalysisPanel() {
-  analysisEmpty.classList.add('hidden');
-  analysisContent.classList.remove('hidden');
-
-  const g = analysis.global;
-  metricBrightness.textContent = g.brightness;
-  barBrightness.style.width = `${Math.min(100, (g.brightness / 255) * 100)}%`;
-  metricContrast.textContent = g.contrast;
-  tagContrast.textContent =
-    g.contrastLevel === 'high' ? '高' : g.contrastLevel === 'medium' ? '中' : '低';
-  metricBusyness.textContent = (g.busyness * 100).toFixed(0) + '%';
-  metricTone.textContent =
-    { dark: '暗め', bright: '明るめ', cool: 'クール', neutral: 'ニュートラル', balanced: 'バランス' }[g.tone] || g.tone;
-
-  colorChips.innerHTML = analysis.colors.dominant
-    .map(
-      (c) =>
-        `<div class="color-chip"><span style="background:${c.hex}"></span><span>${c.hex}</span><span>${(c.ratio * 100).toFixed(1)}%</span></div>`
-    )
-    .join('');
-
-  subjectInfo.textContent = `画面${analysis.subject.label}付近（視覚的注目度が高い領域）`;
-
-  positionRank.innerHTML = analysis.positions
-    .slice(0, 5)
-    .map(
-      (p, i) =>
-        `<li>${p.label}<span class="rank-score">${p.score}pt</span><span class="rank-style">${STYLE_LABELS[p.recommendedStyle]}</span></li>`
-    )
-    .join('');
+function render() {
+  const state = getState();
+  contentLayer.innerHTML = renderTemplate(state);
 }
 
-function refreshDesign() {
-  if (!analysis) return;
+async function handleExport() {
+  const state = getState();
+  exportPngBtn.disabled = true;
+  exportPngBtn.textContent = '書き出し中…';
 
-  const posId = positionSelect.value;
-  const position =
-    analysis.positions.find((p) => p.id === posId) || analysis.recommended;
+  try {
+    frame.classList.remove('is-playing');
+    await new Promise((r) => requestAnimationFrame(r));
 
-  let style = styleSelect.value;
-  if (style === 'auto') style = position.recommendedStyle;
-
-  currentDesign = generateDesign(analysis, {
-    position,
-    style,
-    text: mainText.value,
-    subtext: subText.value,
-  });
-
-  renderTelop(currentDesign);
-  drawOverlay();
-
-  recStyle.textContent = `${currentDesign.styleLabel} × ${position.label}`;
-  recRationale.innerHTML = currentDesign.rationale.join('<br>');
-}
-
-function renderTelop(design) {
-  const { css, layout, style } = design;
-  telopLayer.innerHTML = '';
-
-  const container = document.createElement('div');
-  container.className = `telop-container telop-${style}`;
-
-  applyStyles(container, css.container);
-
-  for (const line of layout.lines) {
-    const div = document.createElement('div');
-    div.className = 'telop-line';
-    div.textContent = line;
-    applyStyles(div, css.mainText);
-    container.appendChild(div);
-  }
-
-  if (layout.subLines.length) {
-    const sub = document.createElement('div');
-    sub.className = 'telop-sub';
-    applyStyles(sub, css.subText);
-    for (const line of layout.subLines) {
-      const sd = document.createElement('div');
-      sd.textContent = line;
-      sub.appendChild(sd);
-    }
-    container.appendChild(sub);
-  }
-
-  if (style !== 'band') {
-    container.style.position = 'absolute';
-  } else {
-    container.style.position = 'absolute';
-    container.classList.add('telop-band');
-  }
-
-  telopLayer.appendChild(container);
-}
-
-function applyStyles(el, styles) {
-  if (!styles) return;
-  for (const [key, value] of Object.entries(styles)) {
-    el.style[key] = value;
-  }
-}
-
-function drawOverlay() {
-  overlayCtx.clearRect(0, 0, FRAME_W, FRAME_H);
-  if (!analysis) return;
-
-  if (showGrid.checked) {
-    for (const cell of analysis.grid.cells) {
-      const alpha = cell.busyness;
-      overlayCtx.fillStyle =
-        alpha < 0.3
-          ? 'rgba(126, 200, 227, 0.12)'
-          : alpha > 0.5
-            ? 'rgba(201, 168, 76, 0.1)'
-            : 'rgba(255, 255, 255, 0.04)';
-      overlayCtx.fillRect(cell.x, cell.y, cell.width, cell.height);
-      overlayCtx.strokeStyle = 'rgba(255,255,255,0.06)';
-      overlayCtx.strokeRect(cell.x, cell.y, cell.width, cell.height);
-    }
-  }
-
-  if (showZones.checked) {
-    for (const area of analysis.readableAreas) {
-      overlayCtx.fillStyle = 'rgba(126, 200, 227, 0.1)';
-      overlayCtx.strokeStyle = 'rgba(126, 200, 227, 0.45)';
-      overlayCtx.lineWidth = 2;
-      overlayCtx.fillRect(area.x + 4, area.y + 4, area.width - 8, area.height - 8);
-      overlayCtx.strokeRect(area.x + 4, area.y + 4, area.width - 8, area.height - 8);
+    if (state.withBackground && !currentImage) {
+      drawBackground();
     }
 
-    if (currentDesign) {
-      const pos = currentDesign.position;
-      const b = pos.bounds;
-      overlayCtx.fillStyle = 'rgba(201, 168, 76, 0.12)';
-      overlayCtx.strokeStyle = 'rgba(201, 168, 76, 0.85)';
-      overlayCtx.lineWidth = 2;
-      overlayCtx.setLineDash([8, 4]);
-      overlayCtx.strokeRect(b.x, b.y, b.width, b.height);
-      overlayCtx.setLineDash([]);
-
-      const label = `${pos.label} (${pos.score}pt)`;
-      overlayCtx.font = '24px "Noto Sans JP", sans-serif';
-      overlayCtx.fillStyle = 'rgba(11, 31, 58, 0.85)';
-      const tw = overlayCtx.measureText(label).width + 16;
-      overlayCtx.fillRect(b.x, b.y - 32, tw, 28);
-      overlayCtx.fillStyle = '#C9A84C';
-      overlayCtx.fillText(label, b.x + 8, b.y - 10);
+    try {
+      await exportToPng({
+        bgCanvas,
+        filterOpacity: state.filterOpacity,
+        contentLayer,
+        withBackground: state.withBackground,
+        filename: state.filename,
+      });
+    } catch {
+      await exportViaOffscreen(state, renderTemplate);
     }
 
-    const sx = analysis.subject.x * FRAME_W;
-    const sy = analysis.subject.y * FRAME_H;
-    overlayCtx.beginPath();
-    overlayCtx.arc(sx, sy, 20, 0, Math.PI * 2);
-    overlayCtx.strokeStyle = 'rgba(255, 100, 100, 0.7)';
-    overlayCtx.lineWidth = 2;
-    overlayCtx.stroke();
-    overlayCtx.beginPath();
-    overlayCtx.moveTo(sx - 28, sy);
-    overlayCtx.lineTo(sx + 28, sy);
-    overlayCtx.moveTo(sx, sy - 28);
-    overlayCtx.lineTo(sx, sy + 28);
-    overlayCtx.stroke();
+    exportPngBtn.textContent = '保存しました';
+    setTimeout(() => { exportPngBtn.textContent = 'PNG書き出し（1920×1080）'; }, 2000);
+  } catch (err) {
+    alert('PNG書き出しに失敗しました: ' + err.message);
+    exportPngBtn.textContent = 'PNG書き出し（1920×1080）';
+  } finally {
+    exportPngBtn.disabled = false;
   }
-}
-
-function copyCss() {
-  if (!currentDesign) return;
-  const { css, style, layout } = currentDesign;
-  const cssText = `/* 企業ウェビナー字幕 — ${STYLE_LABELS[style]} */
-.telop-container {
-${objectToCss(css.container, 2)}
-}
-
-.telop-line {
-${objectToCss(css.mainText, 2)}
-}
-
-.telop-sub {
-${objectToCss(css.subText, 2)}
-}`;
-
-  navigator.clipboard.writeText(cssText).then(() => {
-    exportCssBtn.textContent = 'コピーしました';
-    setTimeout(() => { exportCssBtn.textContent = 'CSSをコピー'; }, 2000);
-  });
-}
-
-function objectToCss(obj, indent = 0) {
-  const pad = ' '.repeat(indent);
-  return Object.entries(obj)
-    .map(([k, v]) => {
-      const prop = k.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
-      return `${pad}${prop}: ${v};`;
-    })
-    .join('\n');
 }
 
 init();
